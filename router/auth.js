@@ -1,9 +1,11 @@
+const { Router } = require('express');
 const express = require('express');
 const router = express.Router();
 const User = require('../model/userSchema');
+const bcrypt = require('bcryptjs');
 
-router.get('/', (req, res) => {
-    res.send('Hello world home page from auth.js');
+router.get('/', async(req, res) => {
+    res.send(await User.findOne());
 });
 
 router.get('/about', (req, res) => {
@@ -23,11 +25,46 @@ router.post('/register', async (req,res) => {
         if(userExist){
             res.status(422).json({error:"User already Existed"});
         }
-        const user = User({name, email, phone, work, password, cpassword});
-        await user.save();
-        res.status(201).json({message:"Registration successfull"})
+        
+        if(password !== cpassword){
+            res.status(422).json({error:"password not match"});
+        }else{
+            const user = new User({name, email, phone, work, password, cpassword});
+            
+            await user.save();
+            res.status(201).json({message:"Registration successfull"})
+            console.log("Registration successful")
+        }
+
+        
     }catch(err){ console.log(err);}
 })
+
+
+router.post('/login', async (req,res) => {
+    const {email, password} = req.body;
+    if(!email || !password){
+        return res.status(422).json({error: "Please filled all field properly"});
+    }
+    try{
+        const user = await User.findOne({email: email});
+        if(!user){
+            return res.status(422).json({error:"invalid credentials"});
+        }
+        const isMatch = await bcrypt.compare(password, user.password);
+        if(!isMatch){
+            return res.status(422).json({error:"invalid credentials"});
+        }
+        const token = user.generateAuthToken();
+        res.cookie('token', token, {
+            expires: new Date(Date.now() + 900000),
+            httpOnly: true
+        });
+
+        res.status(200).json({message:"Login successfull"})
+        console.log("Login successful")
+    }catch(err){ console.log(err);}
+} )
 
 
 // user registation using promises..... 
@@ -47,8 +84,6 @@ router.post('/register', async (req,res) => {
 //             user.save().then((user) => res.json(user)).catch((err) => console.log(err));
 //         }).catch((err)=> console.log(err));
 // });
-
-
 
 module.exports = router;
 

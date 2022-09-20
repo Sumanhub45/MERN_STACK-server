@@ -3,14 +3,14 @@ const express = require('express');
 const router = express.Router();
 const User = require('../model/userSchema');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const Authenticate = require('../middleware/authenticate');
 
 router.get('/', async(req, res) => {
     res.send(await User.findOne());
 });
 
-router.get('/about', (req, res) => {
-    res.send('Hello world about');
-});
+
 
 
 // user registation using async-await
@@ -46,7 +46,9 @@ router.post('/login', async (req,res) => {
     if(!email || !password){
         return res.status(422).json({error: "Please filled all field properly"});
     }
+
     try{
+        
         const user = await User.findOne({email: email});
         if(!user){
             return res.status(422).json({error:"invalid credentials"});
@@ -55,9 +57,10 @@ router.post('/login', async (req,res) => {
         if(!isMatch){
             return res.status(422).json({error:"invalid credentials"});
         }
+
         const token = user.generateAuthToken();
         res.cookie('token', token, {
-            expires: new Date(Date.now() + 900000),
+            expires: new Date(Date.now() + 1500000),
             httpOnly: true
         });
 
@@ -84,6 +87,15 @@ router.post('/login', async (req,res) => {
 //             user.save().then((user) => res.json(user)).catch((err) => console.log(err));
 //         }).catch((err)=> console.log(err));
 // });
+
+
+// aboutus page
+
+router.get('/about', Authenticate, (req, res) => {
+    console.log("about page")
+    res.send(req.rootUser);
+
+} );
 
 module.exports = router;
 
